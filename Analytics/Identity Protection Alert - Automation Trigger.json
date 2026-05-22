@@ -1,0 +1,66 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "workspace": {
+            "type": "String"
+        }
+    },
+    "resources": [
+        {
+            "id": "[concat(resourceId('Microsoft.OperationalInsights/workspaces/providers', parameters('workspace'), 'Microsoft.SecurityInsights'),'/alertRules/e572c938-e616-4f12-8164-ac47b220e0de')]",
+            "name": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/e572c938-e616-4f12-8164-ac47b220e0de')]",
+            "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+            "kind": "Scheduled",
+            "apiVersion": "2023-12-01-preview",
+            "properties": {
+                "displayName": "Identity Protection Alert - Automation Trigger",
+                "description": "This alert is intended only to act as an automation trigger for the Revoke Sessions playbook. This will ensure a baseline level of response is applied in all instances to prevent this activity from being missed even if it does fail to meet the criteria to convert to an incident.",
+                "severity": "High",
+                "enabled": true,
+                "query": "let AlertScope = dynamic([\"Anomalous Token\", \"Impossible travel\", \"Atypical travel\", \"Token issuer anomaly\", \"Unfamiliar sign-in properties\"]);\r\nlet PreviouslyMitigated = SecurityAlert\r\n    | where TimeGenerated > ago(6h) and TimeGenerated < ago(5m)\r\n    | where AlertName in (AlertScope) or AlertName contains \"Impossible travel\"\r\n    | project TimeGenerated, Entities, AlertName\r\n    | extend AadUserId = iff(tostring(parse_json(Entities)[0]) contains \"AadUserId\", tostring(parse_json(Entities)[0].AadUserId), iff(tostring(parse_json(Entities)[1]) contains \"AadUserId\", tostring(parse_json(Entities)[1].AadUserId), iff(tostring(parse_json(Entities)[2]) contains \"AadUserId\", tostring(parse_json(Entities)[2].AadUserId), iff(tostring(parse_json(Entities)[3]) contains \"AadUserId\", tostring(parse_json(Entities)[3].AadUserId), \"\"))))\r\n    | summarize count() by AlertName, AadUserId, bin(TimeGenerated, 5m)\r\n    | project-reorder AadUserId;\r\nSecurityAlert\r\n| where TimeGenerated > ago(5m)\r\n| where AlertName in (AlertScope) or AlertName contains \"Impossible travel\"\r\n| project TimeGenerated, Entities, AlertName\r\n| extend AadUserId = iff(tostring(parse_json(Entities)[0]) contains \"AadUserId\", tostring(parse_json(Entities)[0].AadUserId), iff(tostring(parse_json(Entities)[1]) contains \"AadUserId\", tostring(parse_json(Entities)[1].AadUserId), iff(tostring(parse_json(Entities)[2]) contains \"AadUserId\", tostring(parse_json(Entities)[2].AadUserId), iff(tostring(parse_json(Entities)[3]) contains \"AadUserId\", tostring(parse_json(Entities)[3].AadUserId), \"\"))))\r\n| summarize count() by AlertName, AadUserId\r\n| project-reorder AadUserId, AlertName\r\n| where AadUserId !in (PreviouslyMitigated)",
+                "queryFrequency": "PT5M",
+                "queryPeriod": "PT6H",
+                "triggerOperator": "GreaterThan",
+                "triggerThreshold": 0,
+                "suppressionDuration": "PT5H",
+                "suppressionEnabled": false,
+                "startTimeUtc": null,
+                "tactics": [],
+                "techniques": [],
+                "subTechniques": [],
+                "alertRuleTemplateName": null,
+                "incidentConfiguration": {
+                    "createIncident": false,
+                    "groupingConfiguration": {
+                        "enabled": false,
+                        "reopenClosedIncident": false,
+                        "lookbackDuration": "PT5H",
+                        "matchingMethod": "AllEntities",
+                        "groupByEntities": [],
+                        "groupByAlertDetails": [],
+                        "groupByCustomDetails": []
+                    }
+                },
+                "eventGroupingSettings": {
+                    "aggregationKind": "AlertPerResult"
+                },
+                "alertDetailsOverride": null,
+                "customDetails": null,
+                "entityMappings": [
+                    {
+                        "entityType": "Account",
+                        "fieldMappings": [
+                            {
+                                "identifier": "AadUserId",
+                                "columnName": "AadUserId"
+                            }
+                        ]
+                    }
+                ],
+                "sentinelEntitiesMappings": null,
+                "templateVersion": null
+            }
+        }
+    ]
+}
