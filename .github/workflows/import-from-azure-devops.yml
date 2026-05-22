@@ -17,6 +17,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Add Azure DevOps remote and fetch
         env:
           ADO_PAT: ${{ secrets.ADO_PAT }}
@@ -30,7 +35,7 @@ jobs:
       - name: Create import branch
         run: |
           git checkout -B import/azure-devops-upstream
-          git merge upstream/main --no-edit || git merge upstream/main --allow-unrelated-histories --no-edit
+          git merge upstream/main --allow-unrelated-histories --no-edit
 
       - name: Push import branch
         run: |
